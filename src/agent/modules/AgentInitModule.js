@@ -14,6 +14,7 @@ export default class AgentInitModule {
   initAgent(p) {
     this.position = p[0]
     this.id = p[1]
+    console.log(`agent inited: ${this.id} - ${this.position}`);
   }
   setGameStatus(status) {
     this.run = status

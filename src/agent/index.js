@@ -12,6 +12,7 @@ export default class Agent extends MessageAgent {
       return module
     }
     this.init = connect(AgentInitModule)
+    console.log(this.commands)
     this.action = null
     this.rl = readline.createInterface({
       input: process.stdin,
@@ -21,7 +22,7 @@ export default class Agent extends MessageAgent {
 
   analyze(message, command, p) {
     if (this.commands?.[command]) {
-      console.log(message, command, p)
+      console.log(message, command)
       this.commands[command](p)
     }
   }

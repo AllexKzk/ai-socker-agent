@@ -7,8 +7,6 @@ export default class MessageAgent extends SocketWorker {
     this.messageWorker = new MessageWorker()
   }
 
-  analyze(message, command, p) {}
-
   processMessage(message) {
     let data = this.messageWorker.parseMessage(message)
     if (!data)
@@ -17,7 +15,7 @@ export default class MessageAgent extends SocketWorker {
   }
 
   sendCommand(action) {
-    if (action.n && action.v)
+    if (action?.n && action?.v)
       this.socketSend(action.n, action.v)
   }
 

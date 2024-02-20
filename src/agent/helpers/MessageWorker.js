@@ -1,8 +1,8 @@
 export default class MessageWorker {
   parseMessage(message) {
     if(message.endsWith("\u0000"))
-      message = message.substring(0, msg.length - "\u0000".length)
-    let array = message.match(/(\(l[~\d\.]+|[\\\"\w]+|\))/g)
+      message = message.substring(0, message.length - "\u0000".length)
+    let array = message.match(/(\(|[-\d\.]+|[\\\"\w]+|\))/g)
     let res = { message, p: [] }
     this.parse(array, { idx: 0 }, res)
     this.makeCommand(res)
