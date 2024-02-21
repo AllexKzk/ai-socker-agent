@@ -7,6 +7,7 @@ export default class SocketWorker {
   }
   
   socketSend(command, value) {
-    this.socket.sendMessage(`${command} ${value}`)
+    console.log('send to socket: ', `${command} ${value}`) 
+    this.socket.sendMsg(`(${command} ${value})`)
   }
 }

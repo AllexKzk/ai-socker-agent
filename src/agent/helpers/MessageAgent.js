@@ -15,8 +15,8 @@ export default class MessageAgent extends SocketWorker {
   }
 
   sendCommand(action) {
-    if (action?.n && action?.v)
-      this.socketSend(action.n, action.v)
+    if (action?.command && action?.value)
+      this.socketSend(action.command, action.value)
   }
 
   messageGot(message) {
