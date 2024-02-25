@@ -1,6 +1,9 @@
 /dist
 /node_modules
 
+*.rcg
+*.rcl
+
 # IDEs and editors
 /.idea
 .project

@@ -3,6 +3,7 @@ import readline from 'readline'
 import AgentInitModule from './modules/AgentInitModule.js'
 import MessageAgent from './helpers/MessageAgent.js'
 import AgentMoveModule from './modules/AgentMoveModule.js'
+import AgentPositionModule from './modules/AgentPositionModule.js'
 
 export default class Agent extends MessageAgent {
   constructor() {
@@ -18,12 +19,27 @@ export default class Agent extends MessageAgent {
     }
     this.init = connect(AgentInitModule)
     this.move = connect(AgentMoveModule)
+    this.positionModule = connect(AgentPositionModule)
     this.action = null
 
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     });
+    this.rl.on('line', function(input) {
+      if ("w" == input) {
+        this.messageGot(`(move 
+          ${this.positionModule.playerPosition.getPosition().x + 1} ${this.positionModule.playerPosition.getPosition().y})`
+        )
+      }
+      if ("turn" == input) {
+        this.messageGot(`(turn ${30})`)
+      }
+      if("start" == input) {
+        this.startTurn()
+      }
+    }.bind(this));
+    
     this.moveToStartPoint()
   }
 
@@ -34,8 +50,8 @@ export default class Agent extends MessageAgent {
           const x = parseFloat(firstNumber)
           const y = parseFloat(secondNumber)
           this.messageGot(`(move ${x} ${y})`)
+          this.messageGot(`(turn ${moment})`)
           this.moment = moment
-          this.rl.close()
         })
       });
     });

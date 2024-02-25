@@ -5,11 +5,16 @@
   "repository": "https://github.com/AllexKzk/ai-socker-agent.git",
   "author": "AllexKzk <san4a_kozikov@mail.ru>",
   "license": "MIT",
-  "type":"module",
+  "type": "module",
   "scripts": {
-    "start": "node src/main.js"
+    "start": "node src/main.js",
+    "devstart": "nodemon src/main.js"
   },
   "dependencies": {
-    "dotenv": "^16.4.4"
+    "dotenv": "^16.4.4",
+    "kalmanjs": "^1.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
   }
 }
