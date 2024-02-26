@@ -63,6 +63,7 @@ export default class AgentPositionModule {
       "frb": { x: 52.5, y: 34 }
     };
     this.flagsMap = new Map(Object.entries(this.Flags));
+    this.flagsMap.forEach((point) => point.y * -1)
     this.player = new SoccerObject({ name: 'player' })
     this.objectsPositions = new Map()
     this.counter = 0 //dbg
