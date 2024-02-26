@@ -67,6 +67,8 @@ export default class AgentPositionModule {
     this.objectsPositions = new Map()
     this.counter = 0 //dbg
     this.counterNum = 100 //dbg
+    this.numberPositionClarification = 5
+    this.calculateNeeded = true; 
 
     this.commands = {
       see: this.calculatePosition.bind(this),
@@ -79,7 +81,7 @@ export default class AgentPositionModule {
     }
   }
 
-  distance(p1,p2){
+  distance(p1, p2) {
     return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
   }
   /* 
@@ -118,15 +120,18 @@ export default class AgentPositionModule {
   }
 
   calculatePlayerPosition(points) {
-    let threePoint = this.positionWorker.getValidThreeFlags(points);
-    if (threePoint) {
-      let pos = this.getCoordinateByThreeDots(threePoint.flag1, threePoint.flag2, threePoint.flag3);
-      this.player.setNewPosition(pos);
+    // if(that.player.getPosition().x != undefined) return
+    for(let i = 0; i < this.numberPositionClarification; ++i){
+      let threePoint = this.positionWorker.getValidThreeFlags(points, i);
+      if (threePoint) {
+        let pos = this.getCoordinateByThreeDots(threePoint.flag1, threePoint.flag2, threePoint.flag3);
+        this.player.setNewPosition(pos);
+      }
     }
-    else {
-      console.log("NO DOTS AHTUNG ", JSON.stringify(points));
-      return undefined
-    }
+    // else {
+    //   console.log("NO DOTS AHTUNG ", JSON.stringify(points));
+    //   return undefined
+    // }
     return true;
   }
 
@@ -166,11 +171,12 @@ export default class AgentPositionModule {
   }
 
   calculatePosition(pos) {
-    let tmp = this.positionWorker.getPositions(pos, this.flagsMap) //как передать this.flagsMap
+    let tmp = this.positionWorker.getPositions(pos, this.flagsMap)
     let flags = tmp.flags
     let objects = tmp.objects
-    if (!this.calculatePlayerPosition(flags)) {
-      console.log("Напиши нормальную функцию определения координат")
+    if (this.calculateNeeded) {
+      this.calculatePlayerPosition(flags)
+      this.calculateNeeded = false;
     }
     this.calculateObjectsPosition(objects, flags)
     this.dbgLog(this.player.getPosition())

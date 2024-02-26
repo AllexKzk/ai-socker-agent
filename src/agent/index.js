@@ -31,6 +31,7 @@ export default class Agent extends MessageAgent {
         this.messageGot(`(move 
           ${this.positionModule.player.getPosition().x + 1} ${this.positionModule.player.getPosition().y})`
         )
+        this.positionModule.player.position.x += 1
       }
       if ("turn" == input) {
         this.messageGot(`(turn ${30})`)
@@ -52,6 +53,7 @@ export default class Agent extends MessageAgent {
           this.messageGot(`(move ${x} ${y})`)
           this.messageGot(`(turn ${moment})`)
           this.moment = moment
+          this.positionModule.calculateNeeded = true;
         })
       });
     });
