@@ -1,14 +1,8 @@
 import ObjectPositionWorker from "../helpers/ObjectPositionWorker.js";
 import SoccerObject from "../helpers/SoccerObject.js";
 
-
-let that;
-
 export default class AgentPositionModule {
   constructor() {
-    this.commands = {
-      see: this.calculatePosition,
-    }
     this.positionWorker = new ObjectPositionWorker()
 
     this.Flags = {
@@ -73,11 +67,14 @@ export default class AgentPositionModule {
     this.objectsPositions = new Map()
     this.counter = 0 //dbg
     this.counterNum = 100 //dbg
-    that = this;
+
+    this.commands = {
+      see: this.calculatePosition.bind(this),
+    }
   }
 
   dbgLog(obj){ //dbg
-    if (that.counter % that.counterNum === 0) {      
+    if (this.counter % this.counterNum === 0) {      
       console.log(obj)
     }
   }
@@ -121,10 +118,10 @@ export default class AgentPositionModule {
   }
 
   calculatePlayerPosition(points) {
-    let threePoint = that.positionWorker.getValidThreeFlags(points);
+    let threePoint = this.positionWorker.getValidThreeFlags(points);
     if (threePoint) {
-      let pos = that.getCoordinateByThreeDots(threePoint.flag1, threePoint.flag2, threePoint.flag3);
-      that.player.setNewPosition(pos);
+      let pos = this.getCoordinateByThreeDots(threePoint.flag1, threePoint.flag2, threePoint.flag3);
+      this.player.setNewPosition(pos);
     }
     else {
       console.log("NO DOTS AHTUNG ", JSON.stringify(points));
@@ -139,22 +136,22 @@ export default class AgentPositionModule {
     }
 
     const calcObjPos = (obj) => {
-      let p1 = that.player.getPosition();
+      let p1 = this.player.getPosition();
       p1.distance = obj.distance
-      let tmpP2 = that.positionWorker.getValidSecondFlags(flags, p1)
-      let p2 = that.flagsMap.get(tmpP2.flag.name)
-      let tmpP3 = that.positionWorker.getValidSecondFlags(flags, p2, tmpP2.index)
-      let p3 = that.flagsMap.get(tmpP3.flag.name)
-      p2.distance = cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, that.distance(p1, p2))
-      p3.distance = cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, that.distance(p1, p3))
-      let a = that.getCoordinateByThreeDots(p1, p2, p3)
-      that.objectsPositions.get(obj.name).setNewPosition(a)
-      that.dbgLog(that.objectsPositions.get(obj.name).getPosition())
+      let tmpP2 = this.positionWorker.getValidSecondFlags(flags, p1)
+      let p2 = this.flagsMap.get(tmpP2.flag.name)
+      let tmpP3 = this.positionWorker.getValidSecondFlags(flags, p2, tmpP2.index)
+      let p3 = this.flagsMap.get(tmpP3.flag.name)
+      p2.distance = cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, this.distance(p1, p2))
+      p3.distance = cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, this.distance(p1, p3))
+      let a = this.getCoordinateByThreeDots(p1, p2, p3)
+      this.objectsPositions.get(obj.name).setNewPosition(a)
+      this.dbgLog(this.objectsPositions.get(obj.name).getPosition())
     }
 
     for (let obj of object) {
-      if (that.objectsPositions.get(obj.name) === undefined) {
-        that.objectsPositions.set(obj.name, new SoccerObject({
+      if (this.objectsPositions.get(obj.name) === undefined) {
+        this.objectsPositions.set(obj.name, new SoccerObject({
           name: obj.name,
           x: undefined,
           y: undefined,
@@ -169,14 +166,14 @@ export default class AgentPositionModule {
   }
 
   calculatePosition(pos) {
-    let tmp = that.positionWorker.getPositions(pos, that.flagsMap) //как передать this.flagsMap
+    let tmp = this.positionWorker.getPositions(pos, this.flagsMap) //как передать this.flagsMap
     let flags = tmp.flags
     let objects = tmp.objects
-    if (!that.calculatePlayerPosition(flags)) {
+    if (!this.calculatePlayerPosition(flags)) {
       console.log("Напиши нормальную функцию определения координат")
     }
-    that.calculateObjectsPosition(objects, flags)
-    that.dbgLog(that.player.getPosition())
-    ++that.counter;                     //dbg
+    this.calculateObjectsPosition(objects, flags)
+    this.dbgLog(this.player.getPosition())
+    ++this.counter;                     //dbg
   }
 }
