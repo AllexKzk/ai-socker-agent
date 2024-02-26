@@ -6,10 +6,10 @@ export default function(agent, teamName, version, port) {
   socket.on('message', (message, info) => {
     agent.messageGot(message)
   })
-  socket.sendMsg = function(message) {
+  socket.sendMessage = function(message) {
     socket.send(Buffer.from(message), port, 'localhost', (err, bytes) => {
       if (err) throw err
     })
   }
-  socket.sendMsg(`(init ${teamName} (version ${version}))`)
+  socket.sendMessage(`(init ${teamName} (version ${version}))`)
 }

@@ -29,7 +29,7 @@ export default class Agent extends MessageAgent {
     this.rl.on('line', function(input) {
       if ("w" == input) {
         this.messageGot(`(move 
-          ${this.positionModule.playerPosition.getPosition().x + 1} ${this.positionModule.playerPosition.getPosition().y})`
+          ${this.positionModule.player.getPosition().x + 1} ${this.positionModule.player.getPosition().y})`
         )
       }
       if ("turn" == input) {
