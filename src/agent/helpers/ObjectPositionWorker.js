@@ -1,10 +1,6 @@
 import Point from './Point.js'
 
 export default class ObjectPositionWorker {
-    constructor(){
-
-    }
-
     isPointsValid(p1, p2) {
         return p2.x != p1.x && p2.y != p1.y
     }

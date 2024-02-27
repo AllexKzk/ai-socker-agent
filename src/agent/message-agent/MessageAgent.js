@@ -1,7 +1,7 @@
-import SocketWorker from './SocketAgent.js'
+import SocketAgent from '../socket-agent/SocketAgent.js'
 import MessageWorker from './MessageWorker.js'
 
-export default class MessageAgent extends SocketWorker {
+export default class MessageAgent extends SocketAgent {
   constructor() {
     super()
     this.messageWorker = new MessageWorker()
@@ -11,7 +11,7 @@ export default class MessageAgent extends SocketWorker {
     let data = this.messageWorker.parseMessage(message)
     if (!data)
       throw new Error('parse err')
-    return this.analyze(data.message, data.command, data.p)
+    this.analyze(data.message, data.command, data.p)
   }
 
   sendCommand(action) {
@@ -21,8 +21,6 @@ export default class MessageAgent extends SocketWorker {
 
   messageGot(message) {
     let data = message.toString('utf8')
-    this.sendCommand(
-      this.processMessage(data)
-    )
+    this.processMessage(data)
   }
 }

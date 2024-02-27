@@ -1,4 +1,4 @@
-export default class SocketWorker {
+export default class SocketAgent {
   constructor() {
     this.socket = undefined
   }

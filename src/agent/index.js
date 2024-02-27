@@ -1,25 +1,18 @@
 import readline from 'readline'
 
 import AgentInitModule from './modules/AgentInitModule.js'
-import MessageAgent from './helpers/MessageAgent.js'
 import AgentMoveModule from './modules/AgentMoveModule.js'
 import AgentPositionModule from './modules/AgentPositionModule.js'
+import CommandsAgent from './command-agent/CommandsAgent.js'
 
-export default class Agent extends MessageAgent {
+export default class Agent extends CommandsAgent {
   constructor() {
     super()
-    this.commands = {
-      'play_on': this.startTurn
-    }
     this.moment = 0
-    const connect = (Module) => {
-      const module = new Module()
-      Object.assign(this.commands, module.commands)
-      return module
-    }
-    this.init = connect(AgentInitModule)
-    this.move = connect(AgentMoveModule)
-    this.positionModule = connect(AgentPositionModule)
+    this.init = this.connectModule(AgentInitModule)
+    this.move = this.connectModule(AgentMoveModule)
+    this.positionModule = this.connectModule(AgentPositionModule)
+
     this.action = null
 
     this.rl = readline.createInterface({
@@ -57,16 +50,5 @@ export default class Agent extends MessageAgent {
         })
       });
     });
-  }
-
-  startTurn() {
-    console.log('play on')
-    this.messageGot(`(turn ${this.moment})`)
-  }
-
-  analyze(message, command, p) {
-    if (this.commands?.[command]) {
-      return this.commands[command](p)
-    }
   }
 }

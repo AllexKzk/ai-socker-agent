@@ -1,5 +1,6 @@
 import ObjectPositionWorker from "../helpers/ObjectPositionWorker.js";
 import SoccerObject from "../helpers/SoccerObject.js";
+import Command from "../command-agent/Command.js"
 
 export default class AgentPositionModule {
   constructor() {
@@ -72,7 +73,7 @@ export default class AgentPositionModule {
     this.calculateNeeded = true; 
 
     this.commands = {
-      see: this.calculatePosition.bind(this),
+      see: Command(this.calculatePosition.bind(this)),
     }
   }
 

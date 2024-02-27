@@ -1,8 +1,10 @@
+import Command from "../command-agent/Command.js"
+
 export default class AgentMoveModule {
   constructor() {
     this.commands = {
-      move: this.moveToPoint,
-      turn: this.turnOnMoment
+      move: Command(this.moveToPoint),
+      turn: Command(this.turnOnMoment)
     }
   }
 
