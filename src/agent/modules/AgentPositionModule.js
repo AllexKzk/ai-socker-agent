@@ -66,19 +66,31 @@ export default class AgentPositionModule {
     this.flagsMap = new Map(Object.entries(this.Flags));
     this.flagsMap.forEach((point) => point.y * -1)
     this.player = new SoccerObject({ name: 'player' })
+    this.playerPrevPosition = undefined;
     this.objectsPositions = new Map()
     this.counter = 0 //dbg
     this.counterNum = 100 //dbg
     this.numberPositionClarification = 5
-    this.calculateNeeded = true; 
-
+    this.calculateNeeded = true;
+    this.serverError = 0.1;
     this.commands = {
       see: Command(this.calculatePosition.bind(this)),
     }
   }
 
-  dbgLog(obj){ //dbg
-    if (this.counter % this.counterNum === 0) {      
+  inverseCoordinates() {
+    this.flagsMap.forEach((point) => {
+      point.y *= -1
+      point.x *= -1
+    })
+  }
+
+  recalculatePlayerPosition() {
+    this.calculateNeeded = true;
+  }
+
+  dbgLog(obj) { //dbg
+    if (this.counter % this.counterNum === 0) {
       console.log(obj)
     }
   }
@@ -86,6 +98,22 @@ export default class AgentPositionModule {
   distance(p1, p2) {
     return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2)
   }
+
+  alpha(p1, p2) {
+    return (p1.y - p2.y) / (p2.x - p1.x);
+  }
+
+  beta(p1, p2) {
+    return (
+      p2.y * p2.y
+      - p1.y * p1.y
+      + p2.x * p2.x
+      - p1.x * p1.x
+      + p1.distance * p1.distance
+      - p2.distance * p2.distance
+    ) / (2 * (p2.x - p1.x));
+  }
+
   /* 
       p2.x != p1.x
       p2.y != p1.y
@@ -93,26 +121,12 @@ export default class AgentPositionModule {
       p3.y != p1.y
   */
   getCoordinateByThreeDots(p1, p2, p3) {
-    function alpha(p1, p2) {
-      return (p1.y - p2.y) / (p2.x - p1.x);
-    }
 
-    function beta(p1, p2) {
-      return (
-        p2.y * p2.y
-        - p1.y * p1.y
-        + p2.x * p2.x
-        - p1.x * p1.x
-        + p1.distance * p1.distance
-        - p2.distance * p2.distance
-      ) / (2 * (p2.x - p1.x));
-    }
+    const alpha1 = this.alpha(p1, p2);
+    const beta1 = this.beta(p1, p2);
 
-    const alpha1 = alpha(p1, p2);
-    const beta1 = beta(p1, p2);
-
-    const alpha2 = alpha(p1, p3);
-    const beta2 = beta(p1, p3);
+    const alpha2 = this.alpha(p1, p3);
+    const beta2 = this.beta(p1, p3);
 
     let y = (beta1 - beta2) / (alpha2 - alpha1);
     let x = alpha1 * y + beta1;
@@ -121,20 +135,77 @@ export default class AgentPositionModule {
     return { x: x, y: y };
   }
 
-  calculatePlayerPosition(points) {
-    // if(that.player.getPosition().x != undefined) return
-    for(let i = 0; i < this.numberPositionClarification; ++i){
-      let threePoint = this.positionWorker.getValidThreeFlags(points, i);
-      if (threePoint) {
-        let pos = this.getCoordinateByThreeDots(threePoint.flag1, threePoint.flag2, threePoint.flag3);
-        this.player.setNewPosition(pos);
+  calculatePlayerPosition(flags) {
+    if (flags.length == 1) return false;
+    if (flags.length == 2) {
+      const [f1, f2] = flags
+      const d1 = f1.distance;
+      const d2 = f2.distance
+      let x = null
+      let y = null
+      if (f1.x == f2.x) {
+        y = (f2.y ** 2 - f1.y ** 2 + d1 ** 2 - d2 ** 2) / (2 * (f2.y - f1.y))
+        x = Math.sqrt(d1 ** 2 - (y - f1.y) ** 2) + f1.x
       }
+      else if (f1.y == f2.y) {
+        x = (f2.x ** 2 - f1.x ** 2 + d1 ** 2 - d2 ** 2) / (2 * (f2.x - f1.x))
+        y = Math.sqrt(d1 ** 2 - (x - f1.x) ** 2) + f1.y
+      }
+      else{
+        const borders = { x_min: -54, x_max: 54, y_min: -32, y_max: 32 }
+        const sign = [-1, 1]
+        const alpha = (f1.y - f2.y) / (f2.x - f1.x)
+        const beta = (f2.y ** 2 - f1.y ** 2 + f2.x ** 2 - f1.x ** 2 + d1 ** 2 - d2 ** 2) / (2 * (f2.x - f1.x))
+        const a = alpha ** 2 + 1
+        const b = -2 * (alpha * (f1.x - beta) + f1.y)
+        const c = (f1.x - beta) ** 2 + f1.y ** 2 - d1 ** 2
+        const D = Math.sqrt(b ** 2 - 4 * a * c)
+        if (y === null) {
+          for (let y_sign of sign) {
+            const try_y = (-b + y_sign * D) / 2 / a
+            if (borders.y_min <= try_y <= borders.y_max) {
+              y = try_y
+              break
+            }
+          }
+        }
+        if (x === null) {
+          for (let x_sign of sign) {
+            const try_x = f1.x + x_sign * Math.sqrt(d1 ** 2 - (y - f1.y) ** 2)
+            if (borders.x_min <= try_x <= borders.x_max) {
+              x = try_x
+              break
+            }
+          }
+        }
+      }
+      this.player.setNewPosition({ x: x, y: y });
     }
-    // else {
-    //   console.log("NO DOTS AHTUNG ", JSON.stringify(points));
-    //   return undefined
-    // }
-    return true;
+    if (flags.length >= 3) {
+      let maxI = flags.length - 3 > this.numberPositionClarification ?
+        this.numberPositionClarification
+        : flags.length - 3;
+      for (let i = 0; i < maxI; ++i) {
+        let threePoint = this.positionWorker.getValidThreeFlags(flags, i);
+        if (threePoint) {
+          let pos = this.getCoordinateByThreeDots(threePoint.flag1, threePoint.flag2, threePoint.flag3);
+          this.player.setNewPosition(pos);
+        }
+      }
+      if (!this.player.playerPrevPosition) {
+        this.playerPrevPosition = { ...this.player.getPosition() }
+      }
+      else
+        this.calculateNeeded = false;
+
+    }
+    const d = this.distance(this.playerPrevPosition, this.player.getPosition())
+    if (this.player.getPosition().x * this.serverError > d && this.player.getPosition().y * this.serverError > d) { // хардкод погрешности измерения, если перемещение ниже порога, думаем что считать нужно дальше
+      this.recalculatePlayerPosition()
+    }
+    else {
+      this.calculateNeeded = false
+    }
   }
 
   calculateObjectsPosition(object, flags) {
@@ -143,12 +214,16 @@ export default class AgentPositionModule {
     }
 
     const calcObjPos = (obj) => {
-      let p1 = this.player.getPosition();
+      let p1 = { ... this.player.getPosition() };
       p1.distance = obj.distance
       let tmpP2 = this.positionWorker.getValidSecondFlags(flags, p1)
       let p2 = this.flagsMap.get(tmpP2.flag.name)
-      let tmpP3 = this.positionWorker.getValidSecondFlags(flags, p2, tmpP2.index)
-      let p3 = this.flagsMap.get(tmpP3.flag.name)
+
+      let tmpP3 = this.positionWorker.getValidSecondFlags(flags, p2, tmpP2.index + 1)
+      if (tmpP3?.flag.name == undefined) {
+        return false
+      }
+      let p3 = this.flagsMap.get(tmpP3?.flag.name)
       p2.distance = cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, this.distance(p1, p2))
       p3.distance = cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, this.distance(p1, p3))
       let a = this.getCoordinateByThreeDots(p1, p2, p3)
@@ -175,10 +250,17 @@ export default class AgentPositionModule {
   calculatePosition(pos) {
     let tmp = this.positionWorker.getPositions(pos, this.flagsMap)
     let flags = tmp.flags
+    if (flags.length == 1) {
+      // console.log("Реально мало флагов, он 1");
+      return;
+    }
+    if (flags.length == 2) {
+      let a = 1
+    }
+    flags.sort((a, b) => a.distance - b.distance);
     let objects = tmp.objects
     if (this.calculateNeeded) {
       this.calculatePlayerPosition(flags)
-      this.calculateNeeded = false;
     }
     this.calculateObjectsPosition(objects, flags)
     this.dbgLog(this.player.getPosition())
