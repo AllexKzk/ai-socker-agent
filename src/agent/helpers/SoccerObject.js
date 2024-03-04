@@ -24,6 +24,10 @@ export default class SoccerObject {
         this.position.y = this.yKalman.filter(pos.y)
     }
 
+    setMoment(moment){
+        this.moment = moment
+    }
+
     getPosition(){
         return this.position;
     }

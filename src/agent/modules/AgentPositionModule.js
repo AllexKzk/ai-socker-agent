@@ -217,13 +217,17 @@ export default class AgentPositionModule {
       let p1 = { ... this.player.getPosition() };
       p1.distance = obj.distance
       let tmpP2 = this.positionWorker.getValidSecondFlags(flags, p1)
+      if (tmpP2?.flag.name == undefined) {
+        return false
+      }
       let p2 = this.flagsMap.get(tmpP2.flag.name)
-
       let tmpP3 = this.positionWorker.getValidSecondFlags(flags, p2, tmpP2.index + 1)
       if (tmpP3?.flag.name == undefined) {
         return false
       }
       let p3 = this.flagsMap.get(tmpP3?.flag.name)
+      // TODO: если плохо определяются координаты объектов, то можно пересчитывать
+      // угол флага относительно позиции игрока используя координаты и поворот игрока
       p2.distance = cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, this.distance(p1, p2))
       p3.distance = cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, this.distance(p1, p3))
       let a = this.getCoordinateByThreeDots(p1, p2, p3)
@@ -250,18 +254,9 @@ export default class AgentPositionModule {
   calculatePosition(pos) {
     let tmp = this.positionWorker.getPositions(pos, this.flagsMap)
     let flags = tmp.flags
-    if (flags.length == 1) {
-      // console.log("Реально мало флагов, он 1");
-      return;
-    }
-    if (flags.length == 2) {
-      let a = 1
-    }
     flags.sort((a, b) => a.distance - b.distance);
     let objects = tmp.objects
-    if (this.calculateNeeded) {
-      this.calculatePlayerPosition(flags)
-    }
+    this.calculatePlayerPosition(flags)
     this.calculateObjectsPosition(objects, flags)
     this.dbgLog(this.player.getPosition())
     ++this.counter;                     //dbg

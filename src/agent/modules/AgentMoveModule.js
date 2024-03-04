@@ -4,12 +4,22 @@ export default class AgentMoveModule {
   constructor() {
     this.commands = {
       move: Command(this.moveToPoint),
-      turn: Command(this.turnOnMoment)
+      turn: Command(this.turnOnMoment),
+      dash: Command(this.dash),
+      kick: Command(this.kick),
     }
+  }
+  
+  kick(power){
+    return { command: 'kick', value: `${power}` }  
+  }
+
+  dash(power){
+    return { command: 'dash', value: `${power}` }  
   }
 
   turnOnMoment(moment) {
-    return { command: 'turn', value: `${moment.pop()}` }
+    return { command: 'turn', value: `${moment}` }
   }
 
   moveToPoint(point) {

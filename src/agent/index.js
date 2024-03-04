@@ -4,6 +4,8 @@ import AgentInitModule from './modules/AgentInitModule.js'
 import AgentMoveModule from './modules/AgentMoveModule.js'
 import AgentPositionModule from './modules/AgentPositionModule.js'
 import CommandsAgent from './command-agent/CommandsAgent.js'
+import AgentMissionModule from './modules/AgentMissionModule.js'
+import AgentPlayerStatusModule from './modules/AgentPlayerStatusModule.js'
 
 export default class Agent extends CommandsAgent {
   constructor() {
@@ -12,20 +14,22 @@ export default class Agent extends CommandsAgent {
     this.init = this.connectModule(AgentInitModule)
     this.move = this.connectModule(AgentMoveModule)
     this.positionModule = this.connectModule(AgentPositionModule)
-
+    this.missionModule = this.connectModule(AgentMissionModule,
+      {
+        positionModule: this.positionModule,
+        messageModule: this,
+      }
+    )
+    this.playerStatus = this.connectModule(AgentPlayerStatusModule)
     this.action = null
 
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout
     });
-    this.rl.on('line', function(input) {
+    this.rl.on('line', function (input) {
       if ("w" == input) {
-        this.messageGot(`(move 
-          ${this.positionModule.player.getPosition().x + Math.cos(this.positionModule.player.moment * Math.PI / 180)}
-           ${this.positionModule.player.getPosition().y + Math.sin(this.positionModule.player.moment * Math.PI / 180)})`
-        )
-        this.positionModule.recalculatePlayerPosition()
+        this.messageGot("(dash 100)")
       }
       if (input.startsWith("move")) {
         const x = parseInt(input.split(' ')[1]);
@@ -35,35 +39,44 @@ export default class Agent extends CommandsAgent {
       }
       if (input.startsWith("turn")) {
         const degrees = parseInt(input.split(' ')[1]);
-        if(degrees){
+        if (degrees) {
           this.messageGot(`(turn ${degrees})`)
-          this.positionModule.player.moment = degrees
+          this.positionModule.player.moment += degrees
         }
-        else{ 
+        else {
           this.messageGot(`(turn ${30})`)
           this.positionModule.player.moment += 30
         }
       }
-      if("start" == input) {
-        this.startTurn()
+      if ("start" == input) {
+        this.startMission()
+      }
+      if ("stop" == input) {
+        this.missionModule.setMission(undefined)
       }
     }.bind(this));
-    
+
     this.moveToStartPoint()
+  }
+
+  startMission() {
+    let mission = [
+      { act: "flag", fl: "frb" },
+      { act: "flag", fl: "gl" },
+      { асс: "flag", fl: "fc" },
+      { act: "kick", fl: "b", goal: "gr" }
+    ]
+    this.missionModule.setMission(mission)
   }
 
   moveToStartPoint() {
     this.rl.question('X: ', (firstNumber) => {
       this.rl.question('Y: ', (secondNumber) => {
-        this.rl.question('MOMENT: ', (moment) => {
-          const x = parseFloat(firstNumber)
-          const y = parseFloat(secondNumber)
-          this.messageGot(`(move ${x} ${y})`)
-          this.messageGot(`(turn ${moment})`)
-          this.moment = moment
-          this.positionModule.recalculatePlayerPosition()
-        })
-      });
+        const x = parseFloat(firstNumber)
+        const y = parseFloat(secondNumber)
+        this.messageGot(`(move ${x} ${y})`)
+        this.positionModule.recalculatePlayerPosition()
+      })
     });
   }
 }

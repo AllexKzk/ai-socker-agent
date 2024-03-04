@@ -8,8 +8,8 @@ export default class CommandsAgent extends MessageAgent {
     this.commands = new Map()
   }
 
-  connectModule(Module) {
-    const module = new Module()
+  connectModule(Module, params) {
+    const module = new Module(params)
     Object.entries(module.commands).forEach(([name, command]) => {
       if (this.commands.has(name)) {
         //push to commands PriorityQueue
