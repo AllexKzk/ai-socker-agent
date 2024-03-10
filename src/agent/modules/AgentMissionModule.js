@@ -11,17 +11,23 @@ export default class AgentMissionModule {
         this.destinationDistance = 3
         this.commands = {
             sense_body: Command(this.tick.bind(this)),
+            // see: Command(this.seeCommand.bind(this)),
         }
+        this.clarificationTickCounter = 3;
+        this.currentTick = 0;
+        this.isActualSee = true;
         this.prevTurn = 0
-        this.minD =  999
+    }
 
+    seeCommand() {
+        this.isActualSee = true;
     }
 
     tick(data) {
         if (this.mission) {
+            this.currentTick = parseInt(data[0]);
             this.doMission();
         }
-        // let tickCount = parseInt(data[0]);
     }
 
     setNarrowView() {
@@ -33,8 +39,7 @@ export default class AgentMissionModule {
     }
 
     isMissionComplete() {
-        if (this.currentActIndex == this.mission?.length - 1 || this.mission == undefined) {
-            this.setNormalView()
+        if (this.currentActIndex == this.mission?.length - 1) {
             return true;
         }
         return false;
@@ -46,13 +51,19 @@ export default class AgentMissionModule {
 
     }
 
-    turnPlayerToPoint(p) {
+    turnPlayerToPoint(p, force = false) {
+        if (!force && this.currentTick % this.clarificationTickCounter != 0) return;
         let playerPos = this.player.getPosition();
-        let newMoment = Math.atan2(p.y - playerPos.y, p.x - playerPos.x) * 180 / Math.PI - this.player.moment;
+        let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl).angle;
+
+        if (newMoment == undefined) {
+            newMoment = Math.atan2(p.y - playerPos.y, p.x - playerPos.x) * 180 / Math.PI - this.player.moment;
+        }
         if (Math.abs(newMoment) > 1) {
             this.turnPlayer(newMoment)
             this.prevTurn = newMoment
         }
+        // this.isActualSee = false;
     }
 
     isPlayerOnDestination(p) {
@@ -60,7 +71,6 @@ export default class AgentMissionModule {
         if (d1 <= this.destinationDistance * 1.1 || p.distance <= this.destinationDistance * 1.1) {
             return true;
         }
-        if(d1 < this.minD) this.minD = d1;
         return false;
     }
 
@@ -79,11 +89,13 @@ export default class AgentMissionModule {
     }
 
     doMission() {
-        if (this.isMissionComplete()) return;
+        if (this.isMissionComplete() || this.mission == undefined) return;
         if (this.mission[this.currentActIndex].act === "flag") {
             let currentDestination = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
             if (this.isPlayerOnDestination(currentDestination)) {
                 this.currentActIndex += 1
+                let nextDest = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
+                if (nextDest) this.turnPlayerToPoint(nextDest, true);
                 return
             }
             else {
@@ -91,7 +103,7 @@ export default class AgentMissionModule {
             }
         }
         else if (this.mission[this.currentActIndex].act === "kick") {
-            ballCoords = this.findBallCoordinates()
+            let ballCoords = this.findBallCoordinates()
             if (this.isPlayerOnDestination(ballCoords)) {
                 this.messageModule.messageGot(`(kick ${100})`);
             }

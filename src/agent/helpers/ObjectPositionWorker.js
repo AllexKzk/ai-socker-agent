@@ -29,23 +29,19 @@ export default class ObjectPositionWorker {
 
 
     getPositions(pos, flagsMap) {
-        let flags = new Array()
         let objects = new Array()
-
+        let flags = new Array()
         for (let i = 1; i < pos.length; ++i) {
             let currentDot = pos[i]
             let currentDotName = currentDot?.command?.p.join('')
             let a = flagsMap.get(currentDotName)
             if (a) {
-                let p1 = new Point(
-                        currentDotName,
-                        a.x, a.y,
-                        currentDot.p[0],
-                        currentDot.p[1],
-                        currentDot.p[2], 
-                        currentDot.p[3]
-                    )
-                flags.push(p1)
+                a.name = currentDotName;
+                a.distance = currentDot.p[0];
+                a.angle = currentDot.p[1];
+                a.distChange = currentDot.p[2];
+                a.angleChange = currentDot.p[3];
+                flags.push(a);
             }
             else{
                 let p1 = new Point(

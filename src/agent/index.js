@@ -35,7 +35,6 @@ export default class Agent extends CommandsAgent {
         const x = parseInt(input.split(' ')[1]);
         const y = parseInt(input.split(' ')[2]);
         this.messageGot(`(move ${x} ${y})`)
-        this.positionModule.recalculatePlayerPosition()
       }
       if (input.startsWith("turn")) {
         const degrees = parseInt(input.split(' ')[1]);
@@ -61,9 +60,9 @@ export default class Agent extends CommandsAgent {
 
   startMission() {
     let mission = [
-      { act: "flag", fl: "frb" },
+      { act: "flag", fl: "fplt" },
       { act: "flag", fl: "gl" },
-      { асс: "flag", fl: "fc" },
+      { act: "flag", fl: "fc" },
       { act: "kick", fl: "b", goal: "gr" }
     ]
     this.missionModule.setMission(mission)
@@ -75,7 +74,6 @@ export default class Agent extends CommandsAgent {
         const x = parseFloat(firstNumber)
         const y = parseFloat(secondNumber)
         this.messageGot(`(move ${x} ${y})`)
-        this.positionModule.recalculatePlayerPosition()
       })
     });
   }

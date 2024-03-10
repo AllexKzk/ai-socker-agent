@@ -12,13 +12,11 @@ export default class SoccerObject {
             info.distChange,
             info.angleChange);
         this.moment = 0;
-        this.xKalman = new KalmanFilter();
-        this.yKalman = new KalmanFilter();
-        this.xKalman.setMeasurementNoise(3)
-        this.yKalman.setMeasurementNoise(3)
+        this.xKalman = new KalmanFilter({Q:3.2});
+        this.yKalman = new KalmanFilter({Q:3.4});
         this.serverNoise = 0.1;
     }
-    
+    //-9 - 37
     setNewPosition(pos){
         this.position.x = this.xKalman.filter(pos.x)
         this.position.y = this.yKalman.filter(pos.y)
