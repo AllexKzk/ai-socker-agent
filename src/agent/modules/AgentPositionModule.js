@@ -70,6 +70,7 @@ export default class AgentPositionModule {
     this.objectsPositions = new Map();
     this.counter = 0; //dbg
     this.counterNum = 60; //dbg
+    this.dbg = false;
     this.numberPositionClarification = 2;
     this.serverError = 0.1;
     this.commands = {
@@ -92,7 +93,7 @@ export default class AgentPositionModule {
   }
 
   dbgLog(obj) { //dbg
-    if (this.counter % this.counterNum === 0) {
+    if (this.dbg && this.counter % this.counterNum === 0) {
       console.log(obj)
     }
   }
@@ -279,11 +280,27 @@ export default class AgentPositionModule {
     }
   }
 
+  actualizeFlags(flags) {
+    const flagsSet = new Set();
+    flags.forEach(flag => flagsSet.add(flag.name));
+    let oldFlags = Array.from(this.flagsMap.keys()).filter(name => !flagsSet.has(name));
+    // в самом начале перебирает почему-то противников '1','2' и тд
+    for (let n in oldFlags) {
+      let elem = this.flagsMap.get(n);
+      if(elem?.distance) elem.distance = null;
+      if(elem?.angle) elem.angle = null;
+      if(elem?.distChange) elem.distChange = null;
+      if(elem?.angleChange) elem.angleChange = null;
+    }
+
+  }
+
   calculatePosition(pos) {
     let tmp = this.positionWorker.getPositions(pos, this.flagsMap)
     let flags = tmp.flags
     flags.sort((a, b) => a.distance - b.distance);
     let objects = tmp.objects
+    // this.actualizeFlags(flags)
     this.calculatePlayerPosition(flags)
     this.calculateObjectsPosition(objects, flags)
     this.dbgLog(this.player.getPosition())

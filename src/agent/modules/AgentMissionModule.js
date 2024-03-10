@@ -39,7 +39,7 @@ export default class AgentMissionModule {
     }
 
     isMissionComplete() {
-        if (this.currentActIndex == this.mission?.length - 1) {
+        if (this.currentActIndex == this.mission?.length) {
             return true;
         }
         return false;
@@ -51,13 +51,14 @@ export default class AgentMissionModule {
 
     }
 
-    turnPlayerToPoint(p, force = false) {
-        if (!force && this.currentTick % this.clarificationTickCounter != 0) return;
+    turnPlayerToPoint(p, params={force: false, mathMoment:false}) {
+        if (this.currentTick % this.clarificationTickCounter != 0 
+            && !params.force) return;
         let playerPos = this.player.getPosition();
-        let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl).angle;
+        let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
 
-        if (newMoment == undefined) {
-            newMoment = Math.atan2(p.y - playerPos.y, p.x - playerPos.x) * 180 / Math.PI - this.player.moment;
+        if (newMoment == undefined || params.mathMoment) { 
+            newMoment = this.player.moment + Math.atan2(p.y - playerPos.y, p.x - playerPos.x) * 180 / Math.PI;
         }
         if (Math.abs(newMoment) > 1) {
             this.turnPlayer(newMoment)
@@ -95,7 +96,7 @@ export default class AgentMissionModule {
             if (this.isPlayerOnDestination(currentDestination)) {
                 this.currentActIndex += 1
                 let nextDest = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
-                if (nextDest) this.turnPlayerToPoint(nextDest, true);
+                if (nextDest) this.turnPlayerToPoint(nextDest, {force: true});
                 return
             }
             else {
