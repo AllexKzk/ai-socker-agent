@@ -10,13 +10,16 @@ export default class AgentMissionModule {
         this.dashPower = 100;
         this.destinationDistance = 3
         this.commands = {
-            sense_body: Command(this.tick.bind(this)),
+            sense_body: Command(this.tick.bind(this), 4),
             // see: Command(this.seeCommand.bind(this)),
         }
         this.clarificationTickCounter = 3;
         this.currentTick = 0;
         this.isActualSee = true;
-        this.prevTurn = 0
+        this.prevTurn = 0;
+        this.positionAgent.eventEmitter.on('flagsUpdated', (flags) => {
+            let a = flags;
+        });
     }
 
     seeCommand() {
@@ -25,7 +28,7 @@ export default class AgentMissionModule {
 
     tick(data) {
         if (this.mission) {
-            this.currentTick = parseInt(data[0]);
+            this.currentTick += 1;
             this.doMission();
         }
     }
@@ -50,29 +53,28 @@ export default class AgentMissionModule {
         this.messageModule.messageGot(`(turn ${moment})`);
     }
 
-    turnPlayerToPoint(p, params={force: false, mathMoment:false}) {
-        if (this.currentTick % this.clarificationTickCounter != 0 
+    turnPlayerToPoint(p, params = { force: false, mathMoment: false }) {
+        if (this.currentTick % this.clarificationTickCounter != 0
             && !params.force) return;
         let playerPos = this.player.getPosition();
         let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
         if (newMoment) {
-            console.log('new moment', newMoment,
-                ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180, playerPos)
+            // console.log('new moment', newMoment,
+            // ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180, playerPos)
         }
-        if (newMoment == undefined || params.mathMoment) { 
+        if (newMoment == undefined || params.mathMoment) {
             newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
-            console.log('void moment:', playerPos, newMoment)
-        } 
+            // console.log('void moment:', playerPos, newMoment)
+        }
         if (Math.abs(newMoment) > 1) {
             this.turnPlayer(newMoment);
             this.prevTurn = newMoment + this.player.moment % 180;
         }
-        // this.isActualSee = false;
     }
 
     isPlayerOnDestination(p) {
         let d1 = this.positionAgent.distance(p, this.player.getPosition())
-        if (d1 < this.destinationDistance * 1.1 || p.distance < this.destinationDistance * 1.1) {
+        if (d1 < this.destinationDistance * 1.1 || (p.distance !== null && p.distance < this.destinationDistance * 1.1)) {
             return true;
         }
         return false;
@@ -85,7 +87,18 @@ export default class AgentMissionModule {
     }
 
     findObjectPositions(objName) {
-        if (objName === 'b') { return { x: 0, y: 0 } }
+        const obj = this.positionAgent.objectsPositions.get(objName);
+        if (obj?.position) {
+            return obj.position;
+        }
+        else {
+            if (this.currentTick % this.clarificationTickCounter !== 0) {
+                this.messageModule.socketSend(
+                    `turn`, `-15`
+                );
+            }
+            return null;
+        }
     }
 
     findBallCoordinates() {
@@ -101,7 +114,7 @@ export default class AgentMissionModule {
                     this.currentActIndex += 1
                     let nextDest = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
                     if (nextDest)
-                        this.turnPlayerToPoint(nextDest, {force: true});
+                        this.turnPlayerToPoint(nextDest, { force: true });
                 }
                 else {
                     this.goToPoint(currentDestination)
@@ -109,6 +122,7 @@ export default class AgentMissionModule {
             },
             kick: () => {
                 let ballCoords = this.findBallCoordinates()
+                if (ballCoords == null) return;
                 if (this.isPlayerOnDestination(ballCoords)) {
                     let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
                     if (!newMoment) {
@@ -129,7 +143,7 @@ export default class AgentMissionModule {
 
     setMission(mission) {
         this.currentActIndex = 0;
+        this.currentTick = 0;
         this.mission = mission;
-        // this.setNarrowView();
     }
 }

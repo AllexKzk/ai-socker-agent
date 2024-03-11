@@ -1,6 +1,7 @@
 import ObjectPositionWorker from "../helpers/ObjectPositionWorker.js";
 import SoccerObject from "../helpers/SoccerObject.js";
 import Command from "../command-agent/Command.js"
+import EventEmitter from 'events';
 
 export default class AgentPositionModule {
   constructor() {
@@ -65,6 +66,7 @@ export default class AgentPositionModule {
     };
     this.flagsMap = new Map(Object.entries(this.Flags));
     this.flagsMap.forEach((point) => point.y * -1);
+    this.currentFlags = new Set();
     this.player = new SoccerObject({ name: 'player' });
     this.playerPrevPosition = undefined;
     this.objectsPositions = new Map();
@@ -76,6 +78,7 @@ export default class AgentPositionModule {
     this.commands = {
       see: Command(this.calculatePosition.bind(this)),
     };
+    this.eventEmitter = new EventEmitter();
   }
 
   inverseCoordinates() {
@@ -139,29 +142,6 @@ export default class AgentPositionModule {
   }
 
   getPlayerCoordsByOneFlag(flag) {
-    // На всякий случай оставить это подсчёт позиции игрока через 
-    // пересчение прямой y=kx+b и окружности с радиусом равным расстоянию до флага
-    // const borders = { x_min: -54, x_max: 54, y_min: -32, y_max: 32 }
-    // y = kx + b
-    // const k = -Math.tan(flag.angle * Math.PI / 180);
-    // const b = flag.y - flag.x * k;
-
-    // // (x-x0)^ + (y-y0)^2 = d^2
-    // const d = flag.distance;
-    // const tmp = b - flag.y;
-    // const ak = 1 + k;
-    // const bk = flag.x + k * tmp;
-    // const ck = tmp ** 2 + flag.x ** 2 - d ** 2;
-    // const sign = [-1, 1]
-    // let x = null;
-    // for (let s of sign) {
-    //   const try_x = bk + s * Math.sqrt(bk ** 2 - ak * ck)
-    //   if (try_x && borders.x_min <= try_x <= borders.x_max) {
-    //     x = try_x
-    //     break
-    //   }
-    // }
-    // let y = k * x + b;
     let x = flag.x + flag.distance * Math.cos((flag.angle + this.player.moment) * Math.PI / 180);
     let y = flag.y + flag.distance * Math.sin((flag.angle + this.player.moment) * Math.PI / 180);
     return { x: x, y: y };
@@ -214,12 +194,10 @@ export default class AgentPositionModule {
 
   calculatePlayerPosition(flags) {
     if (flags.length == 1) {
-      // 
       const flag = flags[0];
       let newCoords = this.getPlayerCoordsByOneFlag(flag)
       this.player.setNewPosition(newCoords);
     }
-    // -50.88 -32.81 turn -133
     if (flags.length == 2) {
       const f1 = flags[0];
       const f2 = flags[1];
@@ -236,11 +214,11 @@ export default class AgentPositionModule {
     }
     this.playerPrevPosition = { ...this.player.getPosition() }
   }
-
+  cosTh(alphagr, a, b) {
+    return Math.sqrt(Math.abs(a * a + b * b - 2 * a * b * Math.cos(alphagr * Math.PI / 180)))
+  }
   calculateObjectsPosition(object, flags) {
-    function cosTh(alphagr, a, b) {
-      return Math.sqrt(Math.abs(a * a + b * b - 2 * a * b * Math.cos(alphagr * Math.PI / 180)))
-    }
+    
 
     const calcObjPos = (obj) => {
       let p1 = { ... this.player.getPosition() };
@@ -257,8 +235,8 @@ export default class AgentPositionModule {
       let p3 = this.flagsMap.get(tmpP3?.flag.name)
       // TODO: если плохо определяются координаты объектов, то можно пересчитывать
       // угол флага относительно позиции игрока используя координаты и поворот игрока
-      p2.distance = cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, this.distance(p1, p2))
-      p3.distance = cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, this.distance(p1, p3))
+      p2.distance = this.cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, this.distance(p1, p2))
+      p3.distance = this.cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, this.distance(p1, p3))
       let a = this.getCoordinateByThreeDots(p1, p2, p3)
       this.objectsPositions.get(obj.name).setNewPosition(a)
       this.dbgLog(this.objectsPositions.get(obj.name).getPosition())
@@ -281,8 +259,10 @@ export default class AgentPositionModule {
   }
 
   actualizeFlags(flags) {
-    const flagsSet = new Set();
-    flags.forEach(flag => flagsSet.add(flag.name));
+    this.currentFlags.clear();
+    flags.forEach(flag => this.currentFlags.add(flag.name));
+    this.eventEmitter.emit('flagsUpdated', this.currentFlags);
+    const flagsSet = this.currentFlags;
     let oldFlags = Array.from(this.flagsMap.keys()).filter(name => !flagsSet.has(name));
     // в самом начале перебирает почему-то противников '1','2' и тд
     for (let n of oldFlags) {
@@ -300,9 +280,9 @@ export default class AgentPositionModule {
     let flags = tmp.flags
     flags.sort((a, b) => a.distance - b.distance);
     let objects = tmp.objects
-    this.actualizeFlags(flags)
     this.calculatePlayerPosition(flags)
     this.calculateObjectsPosition(objects, flags)
+    this.actualizeFlags(flags)
     this.dbgLog(this.player.getPosition())
     ++this.counter;                     //dbg
   }
