@@ -285,7 +285,7 @@ export default class AgentPositionModule {
     flags.forEach(flag => flagsSet.add(flag.name));
     let oldFlags = Array.from(this.flagsMap.keys()).filter(name => !flagsSet.has(name));
     // в самом начале перебирает почему-то противников '1','2' и тд
-    for (let n in oldFlags) {
+    for (let n of oldFlags) {
       let elem = this.flagsMap.get(n);
       if(elem?.distance) elem.distance = null;
       if(elem?.angle) elem.angle = null;
@@ -300,7 +300,7 @@ export default class AgentPositionModule {
     let flags = tmp.flags
     flags.sort((a, b) => a.distance - b.distance);
     let objects = tmp.objects
-    // this.actualizeFlags(flags)
+    this.actualizeFlags(flags)
     this.calculatePlayerPosition(flags)
     this.calculateObjectsPosition(objects, flags)
     this.dbgLog(this.player.getPosition())

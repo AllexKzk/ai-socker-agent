@@ -24,7 +24,7 @@ export default class SoccerObject {
     }
 
     setMoment(moment){
-        this.moment = this.momentKalman.filter(borderedMoment)
+        this.moment = this.momentKalman.filter(((moment + 360) % 360) - 360)
     }
 
     getPosition(){
