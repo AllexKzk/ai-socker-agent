@@ -46,9 +46,8 @@ export default class AgentMissionModule {
     }
 
     turnPlayer(moment) {
-        this.player.setMoment(this.player.moment + moment);
+        this.player.setMoment((moment + this.player.moment) % 180);
         this.messageModule.messageGot(`(turn ${moment})`);
-
     }
 
     turnPlayerToPoint(p, params={force: false, mathMoment:false}) {
@@ -56,20 +55,24 @@ export default class AgentMissionModule {
             && !params.force) return;
         let playerPos = this.player.getPosition();
         let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
-
-        if (newMoment == undefined || params.mathMoment) { 
-            newMoment = this.player.moment + Math.atan2(p.y - playerPos.y, p.x - playerPos.x) * 180 / Math.PI;
+        if (newMoment) {
+            console.log('new moment', newMoment,
+                ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180, playerPos)
         }
+        if (newMoment == undefined || params.mathMoment) { 
+            newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
+            console.log('void moment:', playerPos, newMoment)
+        } 
         if (Math.abs(newMoment) > 1) {
-            this.turnPlayer(newMoment)
-            this.prevTurn = newMoment
+            this.turnPlayer(newMoment);
+            this.prevTurn = newMoment + this.player.moment % 180;
         }
         // this.isActualSee = false;
     }
 
     isPlayerOnDestination(p) {
         let d1 = this.positionAgent.distance(p, this.player.getPosition())
-        if (d1 <= this.destinationDistance * 1.1 || p.distance <= this.destinationDistance * 1.1) {
+        if (d1 < this.destinationDistance * 1.1 || p.distance < this.destinationDistance * 1.1) {
             return true;
         }
         return false;
@@ -91,28 +94,37 @@ export default class AgentMissionModule {
 
     doMission() {
         if (this.isMissionComplete() || this.mission == undefined) return;
-        if (this.mission[this.currentActIndex].act === "flag") {
-            let currentDestination = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
-            if (this.isPlayerOnDestination(currentDestination)) {
-                this.currentActIndex += 1
-                let nextDest = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
-                if (nextDest) this.turnPlayerToPoint(nextDest, {force: true});
-                return
-            }
-            else {
-                this.goToPoint(currentDestination)
-            }
-        }
-        else if (this.mission[this.currentActIndex].act === "kick") {
-            let ballCoords = this.findBallCoordinates()
-            if (this.isPlayerOnDestination(ballCoords)) {
-                this.messageModule.messageGot(`(kick ${100})`);
-            }
-            else {
-                this.goToPoint(ballCoords)
-            }
-        }
-
+        const missionAims = {
+            flag: () => {
+                let currentDestination = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
+                if (this.isPlayerOnDestination(currentDestination)) {
+                    this.currentActIndex += 1
+                    let nextDest = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl);
+                    if (nextDest)
+                        this.turnPlayerToPoint(nextDest, {force: true});
+                }
+                else {
+                    this.goToPoint(currentDestination)
+                }
+            },
+            kick: () => {
+                let ballCoords = this.findBallCoordinates()
+                if (this.isPlayerOnDestination(ballCoords)) {
+                    let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
+                    if (!newMoment) {
+                        const playerPos = this.player.getPosition();
+                        const p = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)
+                        newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
+                        console.log('kick: ', newMoment, p, playerPos, this.player.moment)
+                    }
+                    this.messageModule.socketSend('kick', `${10} ${0}`);
+                }
+                else {
+                    this.goToPoint(ballCoords)
+                }
+            },
+        };
+        missionAims[this.mission[this.currentActIndex].act]?.();
     }
 
     setMission(mission) {

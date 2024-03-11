@@ -60,10 +60,10 @@ export default class Agent extends CommandsAgent {
 
   startMission() {
     let mission = [
-      { act: "flag", fl: "fplt" },
+      { act: "flag", fl: "frb" },
       { act: "flag", fl: "gl" },
       { act: "flag", fl: "fc" },
-      { act: "kick", fl: "b", goal: "gr" }
+      { act: "kick", fl: "gr", goal: "gr" }
     ]
     this.missionModule.setMission(mission)
   }
