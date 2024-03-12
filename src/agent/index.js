@@ -29,7 +29,7 @@ export default class Agent extends CommandsAgent {
     });
     this.rl.on('line', function (input) {
       if ("w" == input) {
-        this.messageGot("(dash 100)")
+        this.messageGot("(dash 80)")
       }
       if (input.startsWith("move")) {
         const x = parseInt(input.split(' ')[1]);
@@ -60,7 +60,6 @@ export default class Agent extends CommandsAgent {
 
   startMission() {
     let mission = [
-      { act: "flag", fl: "frb" },
       { act: "flag", fl: "gl" },
       { act: "flag", fl: "fc" },
       { act: "kick", fl: "gr", goal: "gr" }

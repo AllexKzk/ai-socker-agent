@@ -42,10 +42,7 @@ export default class AgentMissionModule {
     }
 
     isMissionComplete() {
-        if (this.currentActIndex == this.mission?.length) {
-            return true;
-        }
-        return false;
+        return this.currentActIndex == this.mission?.length;
     }
 
     turnPlayer(moment) {
@@ -73,11 +70,8 @@ export default class AgentMissionModule {
     }
 
     isPlayerOnDestination(p) {
-        let d1 = this.positionAgent.distance(p, this.player.getPosition())
-        if (d1 < this.destinationDistance * 1.1 || (p.distance !== null && p.distance < this.destinationDistance * 1.1)) {
-            return true;
-        }
-        return false;
+        let d1 = this.positionAgent.distance(p, this.player.getPosition());
+        return d1 < this.destinationDistance * 0.8 || (p.distance !== null && p.distance < this.destinationDistance * 0.8);
     }
 
     goToPoint(dp) {
@@ -122,6 +116,7 @@ export default class AgentMissionModule {
             },
             kick: () => {
                 let ballCoords = this.findBallCoordinates()
+                console.log('balls: ', ballCoords)
                 if (ballCoords == null) return;
                 if (this.isPlayerOnDestination(ballCoords)) {
                     let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
@@ -131,7 +126,7 @@ export default class AgentMissionModule {
                         newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
                         console.log('kick: ', newMoment, p, playerPos, this.player.moment)
                     }
-                    this.messageModule.socketSend('kick', `${10} ${0}`);
+                    this.messageModule.socketSend('kick', `${55} ${newMoment}`);
                 }
                 else {
                     this.goToPoint(ballCoords)
