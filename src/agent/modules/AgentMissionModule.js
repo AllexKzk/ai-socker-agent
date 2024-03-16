@@ -53,8 +53,12 @@ export default class AgentMissionModule {
         else {
             this.player.setMoment(moment);
         }
-        console.log("Δ: ", moment, "  angle: ", !params.mathmoment ? newm : moment);
-        this.messageModule.messageGot(`(turn ${moment.toFixed(2)})`);
+        const resTurn = moment.toFixed(2);
+        // this.messageModule.messageGot(`(turn ${resTurn})`);
+        this.messageModule.socketSend(
+            `turn`, `${resTurn}`
+        );
+        console.log("Δ: ", parseFloat(resTurn), "  angle: ", this.player.moment, (!params.mathmoment ? "server" : "math"));
     }
 
     normalizeAngle(angle, normAngle = 360) {
@@ -103,7 +107,9 @@ export default class AgentMissionModule {
     goToPoint(dp) {
         this.turnPlayerToPoint(dp);
         let dashPower = this.dashPower;
-        this.messageModule.messageGot(`(dash ${dashPower})`);
+        this.messageModule.socketSend(
+            `dash`, `${dashPower}`
+        );
     }
 
     findObjectPositions(objName) {
