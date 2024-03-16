@@ -12,7 +12,7 @@ export default class SoccerObject {
             info.distChange,
             info.angleChange);
         this.moment = 0;
-        this.momentKalman = new KalmanFilter({Q:0.5});;
+        this.momentKalman = new KalmanFilter({R:0.3});
         this.xKalman = new KalmanFilter({Q:3.2});
         this.yKalman = new KalmanFilter({Q:3.4});
         this.serverNoise = 0.1;
@@ -24,7 +24,8 @@ export default class SoccerObject {
     }
 
     setMoment(moment){
-        this.moment = this.momentKalman.filter(((moment + 360) % 360) - 180)
+        // this.moment = this.momentKalman.filter(moment)
+        this.moment = moment;
     }
 
     getPosition(){

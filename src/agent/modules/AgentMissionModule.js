@@ -45,27 +45,53 @@ export default class AgentMissionModule {
         return this.currentActIndex == this.mission?.length;
     }
 
-    turnPlayer(moment) {
-        this.player.setMoment((moment + this.player.moment) % 180);
-        this.messageModule.messageGot(`(turn ${moment})`);
+    turnPlayer(moment, params = { mathmoment: false }) {
+        const newm = this.normalizeAngle(this.player.moment + moment);
+        if (!params.mathmoment) {
+            this.player.setMoment(newm);
+        }
+        else {
+            this.player.setMoment(moment);
+        }
+        console.log("Δ: ", moment, "  angle: ", !params.mathmoment ? newm : moment);
+        this.messageModule.messageGot(`(turn ${moment.toFixed(2)})`);
     }
 
-    turnPlayerToPoint(p, params = { force: false, mathMoment: false }) {
+    normalizeAngle(angle, normAngle = 360) {
+        while (angle > normAngle) {
+            angle -= 360
+        }
+        while (angle < -normAngle) {
+            angle += 360
+        }
+        return angle
+    }
+
+    turnPlayerToPoint(p, params = { force: false, mathmoment: false }) {
         if (this.currentTick % this.clarificationTickCounter != 0
             && !params.force) return;
         let playerPos = this.player.getPosition();
         let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
-        if (newMoment) {
-            // console.log('new moment', newMoment,
-            // ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180, playerPos)
-        }
-        if (newMoment == undefined || params.mathMoment) {
-            newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
-            // console.log('void moment:', playerPos, newMoment)
+        if (Math.abs(this.prevTurn) > 125 && !params.force) return;
+        if (newMoment == undefined) {
+            // newMoment = ((Math.abs(Math.atan2((p.y - playerPos.y), (p.x - playerPos.x))) * 180 / Math.PI) - Math.abs(this.player.moment));
+            let dx = -playerPos.x;
+            let dy = -playerPos.y;
+            if (Math.abs(dy) < 1 || Math.abs(dx) < 1) newMoment = 170;
+            else {
+                params.mathmoment = true;
+                let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                let p2 = this.positionAgent.distance(p, this.player.getPosition());
+                let p1 = this.positionAgent.distance({ x: 0, y: 0 }, this.player.getPosition());
+                let p3 = this.positionAgent.distance({ x: 0, y: 0 }, p);
+                let cosalpha = (p3 ** 2 - p2 ** 2 - p1 ** 2) / (-2 * p1 * p2);
+                newMoment = Math.acos(cosalpha) * 180 / Math.PI + angle;
+            }
+            newMoment = this.normalizeAngle(newMoment);
         }
         if (Math.abs(newMoment) > 1) {
-            this.turnPlayer(newMoment);
-            this.prevTurn = newMoment + this.player.moment % 180;
+            this.turnPlayer(newMoment, params);
+            this.prevTurn = newMoment;
         }
     }
 
