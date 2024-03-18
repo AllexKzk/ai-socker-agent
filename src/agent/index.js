@@ -29,21 +29,21 @@ export default class Agent extends CommandsAgent {
     });
     this.rl.on('line', function (input) {
       if ("w" == input) {
-        this.messageGot("(dash 80)")
+        this.socketSend("dash", "80")
       }
       if (input.startsWith("move")) {
         const x = parseInt(input.split(' ')[1]);
         const y = parseInt(input.split(' ')[2]);
-        this.messageGot(`(move ${x} ${y})`)
+        this.socketSend(`move`, `${x} ${y}`)
       }
       if (input.startsWith("turn")) {
         const degrees = parseInt(input.split(' ')[1]);
         if (degrees) {
-          this.messageGot(`(turn ${degrees})`)
+          this.socketSend(`turn`, `${degrees}`)
           this.positionModule.player.moment += degrees
         }
         else {
-          this.messageGot(`(turn ${30})`)
+          this.socketSend(`turn`, `${30}`)
           this.positionModule.player.moment += 30
         }
       }
@@ -55,14 +55,13 @@ export default class Agent extends CommandsAgent {
       }
     }.bind(this));
 
-    this.moveToStartPoint()
+    // this.moveToStartPoint()
   }
 
   startMission() {
     let mission = [
-      // { act: "flag", fl: "frb" },
-      // { act: "flag", fl: "fct" },
-      { act: "flag", fl: "fprt" },
+      { act: "flag", fl: "frb" },
+      // { act: "flag", fl: "fprt" },
       { act: "flag", fl: "gl" },
       { act: "flag", fl: "fc" },
       { act: "kick", fl: "gr", goal: "gr" }
@@ -75,7 +74,7 @@ export default class Agent extends CommandsAgent {
       this.rl.question('Y: ', (secondNumber) => {
         const x = parseFloat(firstNumber)
         const y = parseFloat(secondNumber)
-        this.messageGot(`(move ${x} ${y})`)
+        this.socketSend(`move`, `${x} ${y}`)
       })
     });
   }

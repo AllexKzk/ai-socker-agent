@@ -14,12 +14,16 @@ export default class AgentMissionModule {
             // see: Command(this.seeCommand.bind(this)),
         }
         this.clarificationTickCounter = 3;
-        this.currentTick = 0;
+        this.currentTick = this.clarificationTickCounter;
         this.isActualSee = true;
         this.prevTurn = 0;
         this.positionAgent.eventEmitter.on('flagsUpdated', (flags) => {
             let a = flags;
         });
+        this.goalTurnAngle = 0;
+        this.server_inertia_moment = 5.0;
+        this.turnBorderValue = 180;
+        this.isDashing = false;
     }
 
     seeCommand() {
@@ -28,37 +32,64 @@ export default class AgentMissionModule {
 
     tick(data) {
         if (this.mission) {
-            this.currentTick += 1;
             this.doMission();
+            this.currentTick += 1;
         }
-    }
-
-    setNarrowView() {
-        this.messageModule.messageGot('(change_view narrow high)')
-    }
-
-    setNormalView() {
-        this.messageModule.messageGot('(change_view normal high)')
     }
 
     isMissionComplete() {
         return this.currentActIndex == this.mission?.length;
     }
 
+    getServerModelTurn(moment, params = { inverse: false, dash: 0 }) {
+        const dash = params.dash ? params.dash : this.dashPower;
+        if (params.inverse) {
+            return moment * (1.0 + this.server_inertia_moment * Math.abs(dash) / 100);
+        }
+        return moment / (1.0 + this.server_inertia_moment * Math.abs(dash) / 100);
+    }
+
     turnPlayer(moment, params = { mathmoment: false }) {
-        const newm = this.normalizeAngle(this.player.moment + moment);
-        if (!params.mathmoment) {
+        let resTurn = 0;
+        if (!this.isDashing) {// если игрок не бежит, инерции нет, можно поворачивать по полной
+            resTurn = moment
+            this.player.setMoment(this.normalizeAngle(this.player.moment + moment));
+            this.nullifyTurnGoal()
+        }
+        else if (!this.isTurnGoal()) { // игок бежит, точку видно, учитываем инерцию
+            resTurn = (this.getServerModelTurn(moment, { inverse: true }) - moment) * 0.4 + moment;
+            let realAngle = moment;
+            if (Math.abs(resTurn) > this.turnBorderValue) {
+                realAngle = this.getServerModelTurn(this.turnBorderValue, { inverse: true })* 0.7;
+                realAngle *= moment > 0 ? 1 : -1;
+                resTurn = this.turnBorderValue
+                resTurn *= moment > 0 ? 1 : -1;
+            }
+            const newm = this.normalizeAngle(this.player.moment + realAngle);
             this.player.setMoment(newm);
         }
-        else {
-            this.player.setMoment(moment);
+        else {// игрок бежит, точку не видно, учитываем инерцию
+            const actualMaxTurn = this.getServerModelTurn(this.turnBorderValue);
+            let newMathMoment = 0;
+            if (Math.abs(this.goalTurnAngle) > actualMaxTurn) {
+                resTurn = this.turnBorderValue
+                resTurn *= this.goalTurnAngle > 0 ? 1 : -1;
+                this.goalTurnAngle -= this.goalTurnAngle > 0 ? actualMaxTurn : -actualMaxTurn;
+                let tmpTurn = actualMaxTurn;
+                tmpTurn *= this.goalTurnAngle > 0 ? 1 : -1;
+                this.player.setMoment(this.normalizeAngle(this.player.moment + tmpTurn));
+            }
+            else {
+                resTurn = this.getServerModelTurn(this.goalTurnAngle, { inverse: true });
+                this.player.setMoment(this.normalizeAngle(this.player.moment + this.goalTurnAngle));
+                this.nullifyTurnGoal()
+            }
+
         }
-        const resTurn = moment.toFixed(2);
-        // this.messageModule.messageGot(`(turn ${resTurn})`);
+        console.log("Δ: ", parseFloat(resTurn), "  angle: ", this.player.moment, (!params.mathmoment ? "server" : "math"));
         this.messageModule.socketSend(
             `turn`, `${resTurn}`
         );
-        console.log("Δ: ", parseFloat(resTurn), "  angle: ", this.player.moment, (!params.mathmoment ? "server" : "math"));
     }
 
     normalizeAngle(angle, normAngle = 360) {
@@ -71,32 +102,61 @@ export default class AgentMissionModule {
         return angle
     }
 
+    isTurnGoal() {
+        if (this.goalTurnAngle !== 0) return true;
+        return false;
+    }
+
+    nullifyTurnGoal() {
+        this.goalTurnAngle = 0;
+    }
+
+    isPlayerMovingUp() {
+        if (this.player.getPosition().y - this.positionAgent.playerPrevPosition.y > 0) {
+            return true;
+        }
+        return false;
+    }
+
     turnPlayerToPoint(p, params = { force: false, mathmoment: false }) {
         if (this.currentTick % this.clarificationTickCounter != 0
-            && !params.force) return;
+            && !params.force
+            && !this.isTurnGoal()) return;
+        if (this.isTurnGoal()) {
+            console.log(this.goalTurnAngle)
+        }
         let playerPos = this.player.getPosition();
         let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
-        if (Math.abs(this.prevTurn) > 125 && !params.force) return;
-        if (newMoment == undefined) {
+        if (newMoment)
+            this.nullifyTurnGoal()
+        if (newMoment == undefined && !this.isTurnGoal()) {
+
             // newMoment = ((Math.abs(Math.atan2((p.y - playerPos.y), (p.x - playerPos.x))) * 180 / Math.PI) - Math.abs(this.player.moment));
-            let dx = -playerPos.x;
-            let dy = -playerPos.y;
-            if (Math.abs(dy) < 1 || Math.abs(dx) < 1) newMoment = 170;
-            else {
-                params.mathmoment = true;
-                let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-                let p2 = this.positionAgent.distance(p, this.player.getPosition());
-                let p1 = this.positionAgent.distance({ x: 0, y: 0 }, this.player.getPosition());
-                let p3 = this.positionAgent.distance({ x: 0, y: 0 }, p);
-                let cosalpha = (p3 ** 2 - p2 ** 2 - p1 ** 2) / (-2 * p1 * p2);
-                newMoment = Math.acos(cosalpha) * 180 / Math.PI + angle;
+            // Оставим на всякий случай старый код
+            // params.mathmoment = true;
+            // let dx = -playerPos.x;
+            // let dy = -playerPos.y;
+            // let angle = Math.atan2(dy, dx) * 180 / Math.PI - this.player.moment;
+            // let p2 = this.positionAgent.distance(p, this.player.getPosition());
+            // let p1 = this.positionAgent.distance({ x: 0, y: 0 }, this.player.getPosition());
+            // let p3 = this.positionAgent.distance({ x: 0, y: 0 }, p);
+            // let cosalpha = (p3 ** 2 - p2 ** 2 - p1 ** 2) / (-2 * p1 * p2);
+            // newMoment = Math.acos(cosalpha) * 180 / Math.PI + angle;
+            // newMoment = this.normalizeAngle(newMoment);
+            // this.goalTurnAngle = newMoment;
+            if(this.isDashing){
+                newMoment = 180;
+                this.goalTurnAngle = 50;
             }
-            newMoment = this.normalizeAngle(newMoment);
+            else newMoment = 45;
         }
-        if (Math.abs(newMoment) > 1) {
+        if (Math.abs(this.prevTurn - newMoment) < 12.5) return;
+        if (Math.abs(newMoment) > 1 || this.isTurnGoal()) {
             this.turnPlayer(newMoment, params);
             this.prevTurn = newMoment;
+            return true;
         }
+        return false;
     }
 
     isPlayerOnDestination(p) {
@@ -105,11 +165,17 @@ export default class AgentMissionModule {
     }
 
     goToPoint(dp) {
-        this.turnPlayerToPoint(dp);
-        let dashPower = this.dashPower;
-        this.messageModule.socketSend(
-            `dash`, `${dashPower}`
-        );
+        if (this.turnPlayerToPoint(dp)) {
+            this.isDashing = false;
+        }
+        else {
+            let dashPower = this.dashPower;
+            this.messageModule.socketSend(
+                `dash`, `${dashPower}`
+            );
+            this.isDashing = true;
+        }
+
     }
 
     findObjectPositions(objName) {
@@ -170,7 +236,7 @@ export default class AgentMissionModule {
 
     setMission(mission) {
         this.currentActIndex = 0;
-        this.currentTick = 0;
+        this.currentTick = this.clarificationTickCounter;
         this.mission = mission;
     }
 }

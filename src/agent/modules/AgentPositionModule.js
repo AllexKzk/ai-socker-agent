@@ -68,7 +68,7 @@ export default class AgentPositionModule {
     this.flagsMap.forEach((point) => point.y * -1);
     this.currentFlags = new Set();
     this.player = new SoccerObject({ name: 'player' });
-    this.playerPrevPosition = undefined;
+    this.playerPrevPosition = null;
     this.objectsPositions = new Map();
     this.counter = 0; //dbg
     this.counterNum = 60; //dbg
@@ -193,6 +193,7 @@ export default class AgentPositionModule {
 
 
   calculatePlayerPosition(flags) {
+    this.playerPrevPosition = { ...this.player.getPosition() }
     if (flags.length == 1) {
       const flag = flags[0];
       let newCoords = this.getPlayerCoordsByOneFlag(flag)
@@ -212,7 +213,6 @@ export default class AgentPositionModule {
         this.player.setNewPosition(pos);
       }
     }
-    this.playerPrevPosition = { ...this.player.getPosition() }
   }
   cosTh(alphagr, a, b) {
     return Math.sqrt(Math.abs(a * a + b * b - 2 * a * b * Math.cos(alphagr * Math.PI / 180)))
