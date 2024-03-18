@@ -17,9 +17,6 @@ export default class AgentMissionModule {
         this.currentTick = this.clarificationTickCounter;
         this.isActualSee = true;
         this.prevTurn = 0;
-        this.positionAgent.eventEmitter.on('flagsUpdated', (flags) => {
-            let a = flags;
-        });
         this.goalTurnAngle = 0;
         this.server_inertia_moment = 5.0;
         this.turnBorderValue = 180;
@@ -60,7 +57,7 @@ export default class AgentMissionModule {
             resTurn = (this.getServerModelTurn(moment, { inverse: true }) - moment) * 0.4 + moment;
             let realAngle = moment;
             if (Math.abs(resTurn) > this.turnBorderValue) {
-                realAngle = this.getServerModelTurn(this.turnBorderValue, { inverse: true })* 0.7;
+                realAngle = this.getServerModelTurn(this.turnBorderValue, { inverse: true }) * 0.7;
                 realAngle *= moment > 0 ? 1 : -1;
                 resTurn = this.turnBorderValue
                 resTurn *= moment > 0 ? 1 : -1;
@@ -86,7 +83,7 @@ export default class AgentMissionModule {
             }
 
         }
-        console.log("Δ: ", parseFloat(resTurn), "  angle: ", this.player.moment, (!params.mathmoment ? "server" : "math"));
+        console.log("Δ: ", parseFloat(resTurn), "origin Δ: ", moment, "angle: ", this.player.moment, (!params.mathmoment ? "server" : "math"));
         this.messageModule.socketSend(
             `turn`, `${resTurn}`
         );
@@ -111,8 +108,17 @@ export default class AgentMissionModule {
         this.goalTurnAngle = 0;
     }
 
-    isPlayerMovingUp() {
-        if (this.player.getPosition().y - this.positionAgent.playerPrevPosition.y > 0) {
+    turnPlayerToobject(object) {
+        if (this.currentTick % this.clarificationTickCounter != 0) return false;
+        if (!object) {
+            this.turnPlayer(20)
+            return true;
+        }
+        const newMoment = object.angle;
+        console.log("ball moment: ", newMoment);
+        if (Math.abs(newMoment) > 1 && Math.abs(this.prevTurn - newMoment) != 0) {
+            this.turnPlayer(newMoment*0.6);
+            this.prevTurn = newMoment;
             return true;
         }
         return false;
@@ -144,13 +150,14 @@ export default class AgentMissionModule {
             // newMoment = Math.acos(cosalpha) * 180 / Math.PI + angle;
             // newMoment = this.normalizeAngle(newMoment);
             // this.goalTurnAngle = newMoment;
-            if(this.isDashing){
+            if (this.isDashing) {
                 newMoment = 180;
                 this.goalTurnAngle = 50;
             }
             else newMoment = 45;
         }
-        if (Math.abs(this.prevTurn - newMoment) < 12.5) return;
+        if (Math.abs(this.prevTurn - newMoment) < 12.5)
+            return;
         if (Math.abs(newMoment) > 1 || this.isTurnGoal()) {
             this.turnPlayer(newMoment, params);
             this.prevTurn = newMoment;
@@ -164,18 +171,35 @@ export default class AgentMissionModule {
         return d1 < this.destinationDistance * 0.8 || (p.distance !== null && p.distance < this.destinationDistance * 0.8);
     }
 
-    goToPoint(dp) {
+    goToObject(dp) {
+        if (this.turnPlayerToobject(dp)) {
+            this.isDashing = false;
+        }
+        else
+            this.isDashing = true;
+        if (this.isDashing) {
+            let dashPower = this.dashPower;
+            this.messageModule.socketSend(
+                `dash`, `${dashPower}`
+            );
+        }
+
+    }
+
+    goToPoint(dp, params = { flag: '' }) {
+
         if (this.turnPlayerToPoint(dp)) {
             this.isDashing = false;
         }
-        else {
+        else this.isDashing = true;
+
+        if (this.isDashing) {
             let dashPower = this.dashPower;
             this.messageModule.socketSend(
                 `dash`, `${dashPower}`
             );
             this.isDashing = true;
         }
-
     }
 
     findObjectPositions(objName) {
@@ -184,16 +208,11 @@ export default class AgentMissionModule {
             return obj.position;
         }
         else {
-            if (this.currentTick % this.clarificationTickCounter !== 0) {
-                this.messageModule.socketSend(
-                    `turn`, `-15`
-                );
-            }
             return null;
         }
     }
 
-    findBallCoordinates() {
+    findBallPosition() {
         return this.findObjectPositions('b')
     }
 
@@ -213,21 +232,20 @@ export default class AgentMissionModule {
                 }
             },
             kick: () => {
-                let ballCoords = this.findBallCoordinates()
-                console.log('balls: ', ballCoords)
-                if (ballCoords == null) return;
-                if (this.isPlayerOnDestination(ballCoords)) {
-                    let newMoment = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)?.angle;
-                    if (!newMoment) {
-                        const playerPos = this.player.getPosition();
-                        const p = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)
-                        newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
-                        console.log('kick: ', newMoment, p, playerPos, this.player.moment)
-                    }
-                    this.messageModule.socketSend('kick', `${55} ${newMoment}`);
+                // TODO: сделать так чтобы игрок шел к мячу
+                let ballObject = this.findBallPosition()
+                if (ballObject && this.isPlayerOnDestination(ballObject)) {
+                    // let newMoment = ballObject.angle;
+                    // if (!newMoment) {
+                    const playerPos = this.player.getPosition();
+                    const p = this.positionAgent.flagsMap.get(this.mission[this.currentActIndex].fl)
+                    let newMoment = ((Math.atan((p.y - playerPos.y) / (p.x - playerPos.x)) * 180 / Math.PI) - this.player.moment) % 180;
+                    // console.log('kick: ', newMoment, p, playerPos, this.player.moment)
+                    // }
+                    this.messageModule.socketSend('kick', `${85} ${-ballObject.angle}`);
                 }
                 else {
-                    this.goToPoint(ballCoords)
+                    this.goToObject(ballObject)
                 }
             },
         };

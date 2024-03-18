@@ -1,7 +1,6 @@
 import ObjectPositionWorker from "../helpers/ObjectPositionWorker.js";
 import SoccerObject from "../helpers/SoccerObject.js";
 import Command from "../command-agent/Command.js"
-import EventEmitter from 'events';
 
 export default class AgentPositionModule {
   constructor() {
@@ -78,7 +77,6 @@ export default class AgentPositionModule {
     this.commands = {
       see: Command(this.calculatePosition.bind(this)),
     };
-    this.eventEmitter = new EventEmitter();
   }
 
   inverseCoordinates() {
@@ -218,26 +216,30 @@ export default class AgentPositionModule {
     return Math.sqrt(Math.abs(a * a + b * b - 2 * a * b * Math.cos(alphagr * Math.PI / 180)))
   }
   calculateObjectsPosition(object, flags) {
-    
+
 
     const calcObjPos = (obj) => {
+      if (obj.name === 'b') {
+        let b = 1;
+      }
       let p1 = { ... this.player.getPosition() };
       p1.distance = obj.distance
       let tmpP2 = this.positionWorker.getValidSecondFlags(flags, p1)
       if (tmpP2?.flag.name == undefined) {
         return false
       }
-      let p2 = this.flagsMap.get(tmpP2.flag.name)
+      let p2 = { ... this.flagsMap.get(tmpP2.flag.name) }
       let tmpP3 = this.positionWorker.getValidSecondFlags(flags, p2, tmpP2.index + 1)
       if (tmpP3?.flag.name == undefined) {
         return false
       }
-      let p3 = this.flagsMap.get(tmpP3?.flag.name)
+      let p3 = { ... this.flagsMap.get(tmpP3?.flag.name) }
       // TODO: если плохо определяются координаты объектов, то можно пересчитывать
       // угол флага относительно позиции игрока используя координаты и поворот игрока
-      p2.distance = this.cosTh(Math.abs(tmpP2.flag.angle - obj.angle), p1.distance, this.distance(p1, p2))
-      p3.distance = this.cosTh(Math.abs(tmpP3.flag.angle - obj.angle), p1.distance, this.distance(p1, p3))
+      p2.distance = this.cosTh(Math.abs(p2.angle - obj.angle), p2.distance, p1.distance)
+      p3.distance = this.cosTh(Math.abs(p3.angle - obj.angle), p1.distance, p3.distance)
       let a = this.getCoordinateByThreeDots(p1, p2, p3)
+
       this.objectsPositions.get(obj.name).setNewPosition(a)
       this.dbgLog(this.objectsPositions.get(obj.name).getPosition())
     }
@@ -261,18 +263,27 @@ export default class AgentPositionModule {
   actualizeFlags(flags) {
     this.currentFlags.clear();
     flags.forEach(flag => this.currentFlags.add(flag.name));
-    this.eventEmitter.emit('flagsUpdated', this.currentFlags);
     const flagsSet = this.currentFlags;
     let oldFlags = Array.from(this.flagsMap.keys()).filter(name => !flagsSet.has(name));
-    // в самом начале перебирает почему-то противников '1','2' и тд
     for (let n of oldFlags) {
       let elem = this.flagsMap.get(n);
-      if(elem?.distance) elem.distance = null;
-      if(elem?.angle) elem.angle = null;
-      if(elem?.distChange) elem.distChange = null;
-      if(elem?.angleChange) elem.angleChange = null;
+      if (elem?.distance) elem.distance = null;
+      if (elem?.angle) elem.angle = null;
+      if (elem?.distChange) elem.distChange = null;
+      if (elem?.angleChange) elem.angleChange = null;
     }
+  }
 
+  actualizeObjects(objects) {
+    const objectSet = new Set();
+    for (let object of objects) {
+      objectSet.add(object.name);
+    }
+    for (let objName of this.objectsPositions.keys()) {
+      if (!objectSet.has(objName)) {
+        this.objectsPositions.delete(objName);
+      }
+    }
   }
 
   calculatePosition(pos) {
@@ -280,6 +291,7 @@ export default class AgentPositionModule {
     let flags = tmp.flags
     flags.sort((a, b) => a.distance - b.distance);
     let objects = tmp.objects
+    this.actualizeObjects(objects);
     this.calculatePlayerPosition(flags)
     this.calculateObjectsPosition(objects, flags)
     this.actualizeFlags(flags)
